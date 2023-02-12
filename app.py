@@ -1,9 +1,10 @@
 from flask import *
 from flask_cors import *
-import sqlite3
+from database_util import *
 
 assetPath = './assets'
 dbname = 'Database.db'
+db = Database(dbname)
 
 app = Flask(__name__)
 CORS(app, supports_credentials = True)
@@ -18,55 +19,29 @@ def sendImage(filename):
 
 @app.route('/login', methods = ['POST'])
 def login():
-    return jsonify({'ok' :'ok'})
+    data = request.get_json()
 
-class Database:
-    def createUserTable(self):
-        with sqlite3.connect(dbname) as database:
-            try:
-                createTableCmd = '''
-                create table if not exist user(
-                    id integer PRIMARY KEY autoincrement,
-                    username Text,
-                    password Text,
-                )
-                '''
-                database.execute(createTableCmd)
-                database.commit()
-            except:
-                print('Cannot create user table.')
+    q = db.query(data['username'])
     
-    def query(self, name):
-        with sqlite3.connect(dbname) as database:
-            try:
-                queryCmd = '''
-                select * from user where username = :name    
-                '''
-                result = database.execute(queryCmd, {'name':name})
-                database.commit()
-                return result
-            except:
-                print('Cannot query.')
+    if  len(q) == 0:
+        return jsonify({'login':'username'}) 
+    else :
+        for row in q:
+            if row[2] == data['password']:
+                return jsonify({'login':'ok'})
+        print (data['password'])
+        return jsonify({'login':'password'})
 
-    def insert(self, name, password):
-        with sqlite3.connect(dbname) as database:
-            try:
-                insertCmd = '''
-                insert into user
-                (id, username, password)
-                values
-                (NULL, :name, :pwd)
-                '''
-                database.execute(insertCmd, {'name':name, 'pwd':password})
-                database.commit()
-            except:
-                print('Cannot insert.')
+@app.route('/signup', methods = ['POST'])
+def signup():
+    data = request.get_json()
+    if db.query(data['username']):
+        return jsonify({'signup' : 'username'})
+    
+    db.insert(data['username'], data['password'])
+    return jsonify({'signup' : 'ok'})
 
 if __name__ == '__main__':
-    db = Database()
     db.createUserTable()
-    db.insert('testuser', 'cccccc')
-
-    print ('hello')
 
     app.run()
